@@ -1,0 +1,63 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Color Palette: #0d1821 #eff1f3 #4e6e5d #ad8a64 #a44a3f 
+All colors MUST be HSL. */
+
+@layer base {
+  :root {
+    /* Color Palette: #0d1821 #eff1f3 #4e6e5d #ad8a64 #a44a3f */
+    --background: 222 32% 8%;
+    --foreground: 216 20% 94%;
+    
+    --card: 222 30% 12%;
+    --card-foreground: 216 20% 94%;
+    
+    --popover: 222 30% 12%;
+    --popover-foreground: 216 20% 94%;
+    
+    --primary: 150 20% 37%;
+    --primary-foreground: 216 20% 94%;
+    
+    --secondary: 32 30% 54%;
+    --secondary-foreground: 222 32% 8%;
+    
+    --muted: 222 20% 20%;
+    --muted-foreground: 216 10% 70%;
+    
+    --accent: 32 30% 54%;
+    --accent-foreground: 222 32% 8%;
+    
+    --destructive: 7 44% 45%;
+    --destructive-foreground: 216 20% 94%;
+    
+    --border: 222 20% 20%;
+    --input: 222 20% 20%;
+    --ring: 150 20% 37%;
+    
+    --radius: 0.5rem;
+    
+    --sidebar-background: 222 30% 12%;
+    --sidebar-foreground: 216 20% 94%;
+    --sidebar-primary: 150 20% 37%;
+    --sidebar-primary-foreground: 216 20% 94%;
+    --sidebar-accent: 32 30% 54%;
+    --sidebar-accent-foreground: 222 32% 8%;
+    --sidebar-border: 222 20% 20%;
+    --sidebar-ring: 150 20% 37%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  
+  body {
+    @apply bg-background text-foreground;
+    font-family: 'Inter', sans-serif;
+  }
+}
