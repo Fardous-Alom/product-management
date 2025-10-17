@@ -34,7 +34,16 @@ const getAuthHeaders = () => {
 };
 
 export const productService = {
-  async getProducts(offset: number = 0, limit: number = 50, categoryId?: string): Promise<{ products: Product[]; total: number }> {
+  
+  async getProducts(
+    offset: number = 0, 
+    limit: number = 50, 
+    categoryId?: string, 
+    retryCount: number = 0
+  ): Promise<{ products: Product[]; total: number }> {
+    const MAX_RETRIES = 3;
+    const BASE_DELAY = 1000; // 1 second base delay
+
     try {
       const url = new URL(`${API_BASE_URL}/products`);
       url.searchParams.append('offset', offset.toString());
@@ -51,6 +60,21 @@ export const productService = {
 
       console.log('Response status:', response.status);
 
+      // Handle rate limiting with exponential backoff
+      if (response.status === 429) {
+        if (retryCount < MAX_RETRIES) {
+          const retryAfter = response.headers.get('Retry-After');
+          const delay = retryAfter 
+            ? parseInt(retryAfter, 10) * 1000 
+            : Math.min(BASE_DELAY * Math.pow(2, retryCount), 30000); // Cap at 30 seconds
+          
+          console.log(`Rate limited. Retrying in ${delay}ms... (Attempt ${retryCount + 1}/${MAX_RETRIES})`);
+          await new Promise(resolve => setTimeout(resolve, delay));
+          return this.getProducts(offset, limit, categoryId, retryCount + 1);
+        }
+        throw new Error('Rate limit exceeded. Please try again later.');
+      }
+
       if (!response.ok) {
         const errorText = await response.text();
         console.error('Failed to fetch products:', {
@@ -58,6 +82,15 @@ export const productService = {
           statusText: response.statusText,
           error: errorText
         });
+        
+        // Handle other potential errors
+        if (response.status === 401) {
+          // Handle unauthorized (token might be expired)
+          authService.logout();
+          window.location.href = '/login';
+          throw new Error('Session expired. Please log in again.');
+        }
+        
         throw new Error(`Failed to fetch products: ${response.status} ${response.statusText}`);
       }
 
@@ -84,7 +117,13 @@ export const productService = {
       return { products, total };
     } catch (error) {
       console.error('Error in getProducts:', error);
-      throw error;
+      if (retryCount < MAX_RETRIES && !(error instanceof Error && error.message.includes('Session expired'))) {
+        const delay = Math.min(BASE_DELAY * Math.pow(2, retryCount), 30000);
+        console.log(`Retrying after error in ${delay}ms... (Attempt ${retryCount + 1}/${MAX_RETRIES})`);
+        await new Promise(resolve => setTimeout(resolve, delay));
+        return this.getProducts(offset, limit, categoryId, retryCount + 1);
+      }
+      throw error instanceof Error ? error : new Error('Failed to fetch products');
     }
   },
 
@@ -171,17 +210,25 @@ export const productService = {
   },
 
   async deleteProduct(id: string): Promise<{ id: string }> {
+  try {
     const response = await fetch(`${API_BASE_URL}/products/${id}`, {
       method: 'DELETE',
       headers: getAuthHeaders()
     });
 
     if (!response.ok) {
-      throw new Error('Failed to delete product');
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.message || 'Failed to delete product');
     }
 
-    return response.json();
-  },
+    // The API returns the deleted product data, but we only need the ID
+    const result = await response.json();
+    return { id: result.id };
+  } catch (error) {
+    console.error('Error deleting product:', error);
+    throw new Error(error instanceof Error ? error.message : 'Failed to delete product');
+  }
+},
 
   async getCategories(searchText?: string, offset: number = 0, limit: number = 10): Promise<{ categories: Category[]; total: number }> {
     let url = `${API_BASE_URL}/categories?offset=${offset}&limit=${limit}`;
